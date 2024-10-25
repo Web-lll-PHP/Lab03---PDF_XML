@@ -1,63 +1,68 @@
 <?php
+
+// Habilitar la visualización de errores
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+
 // Librería para crear documentos PDF
 require('codigos/fpdf.php');
 
-// Incluye el archivo de conexión (por ahora solo es necesario para estructura)
-include_once("codigos/conexion.inc");
-
-// Declara herencia para definir encabezado y pie de página en el documento
 class PDF extends FPDF {
-    // Imprime encabezado
+    // Atributos para los datos del cliente
+    public $companyName;
+    public $contactName;
+    public $contactTitle;
+    public $city;
+    public $country;
+    public $postalCode;
+    public $startDate;
+    public $endDate;
+
     function Header() {
         // Logo
         $this->Image('imagenes/logos/northwind_T.png', 10, 8, 33); 
         
-        // Título del reporte centrado
+        // Título 
         $this->SetFont('Arial', 'B', 15);
-        $this->Cell(0, 30, utf8_decode('Reporte de Facturas por Cliente'), 0, 1, 'C');
+        $this->Cell(0, 30, ('Reporte de Facturas por Cliente'), 0, 1, 'C');
         
-        // Fuente para el contenido del encabezado
+        // Fuente del encabezado
         $this->SetFont('Arial', '', 12);
         
- // Información del Cliente
+        // Información del Cliente
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(17, 8, utf8_decode('Cliente:'), 0, 0, 'L');
-        $this->Cell(10, 8, '', 0, 0, 'L'); //espacio entre cliente y empresa
+        $this->Cell(17, 8, ('Cliente:'), 0, 0, 'L');
+        $this->Cell(10, 8, '', 0, 0, 'L'); // espacio entre cliente y empresa
         $this->SetFont('Arial', '', 12);
-        $this->Cell(83, 8, utf8_decode('Nombre de la Empresa'), 0, 0, 'L');
+        $this->Cell(83, 8, ($this->companyName), 0, 0, 'L');
 
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(0, 8, utf8_decode('Fecha de Consulta:'), 0, 1, 'R'); // Se alinea a la derecha
+        $this->Cell(0, 8, ('Fecha de Consulta:'), 0, 1, 'R'); 
         
-        // Información del Contacto y titulo
-        $this->Cell(17, 8, utf8_decode('Contacto:'), 0, 0, 'L');
-        $this->Cell(10, 8, '', 0, 0, 'L'); //espacio entre cliente y empresa
+        // Información del Contacto y título
+        $this->Cell(17, 8, ('Contacto:'), 0, 0, 'L');
+        $this->Cell(10, 8, '', 0, 0, 'L'); 
         $this->SetFont('Arial', '', 12);
-        $this->Cell(83, 8, utf8_decode('El titulo y nombre completo del contacto.'), 0, 0, 'L');
+        $this->Cell(83, 8, ($this->contactTitle . ' ' . $this->contactName), 0, 0, 'L');
         
-
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(52, 8, utf8_decode('Inicio:'), 0, 0, 'R'); // Etiqueta alineada a la derecha
-        $this->Cell(5, 8, '', 0, 0, 'L'); // Espacio entre "Inicio:" y valor
+        $this->Cell(52, 8, ('Inicio:'), 0, 0, 'R'); 
+        $this->Cell(5, 8, '', 0, 0, 'L'); 
         $this->SetFont('Arial', '', 12);
-        $this->Cell(0, 8, utf8_decode('dd/MMM/yyyy'), 0, 1, 'R'); // Valor de la fecha
+        $this->Cell(0, 8, ($this->startDate), 0, 1, 'R'); 
 
         // Información de Ubicación
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(17, 8, utf8_decode('Ubicación:'), 0, 0, 'L');
-        $this->Cell(10, 8, '', 0, 0, 'L'); //espacio entre cliente y empresa
+        $this->Cell(17, 8, ('Ubicación:'), 0, 0, 'L');
+        $this->Cell(10, 8, '', 0, 0, 'L'); 
         $this->SetFont('Arial', '', 12);
-        $this->Cell(83, 8, utf8_decode('Ciudad, País, Código Postal'), 0, 0, 'L');
+        $this->Cell(83, 8, ($this->city . ', ' . $this->country . ', ' . $this->postalCode), 0, 0, 'L');
         
-
         $this->SetFont('Arial', 'B', 12);
-        $this->Cell(52, 8, utf8_decode('Final:'), 0, 0, 'R'); // Etiqueta alineada a la derecha
+        $this->Cell(52, 8, ('Final:'), 0, 0, 'R'); 
         $this->Cell(5, 8, '', 0, 0, 'L'); // Espacio entre "Inicio:" y valor
         $this->SetFont('Arial', '', 12);
-        $this->Cell(0, 8, utf8_decode('dd/MMM/yyyy'), 0, 1, 'R'); // Valor de la fecha
-
-
-
+        $this->Cell(0, 8, ($this->endDate), 0, 1, 'R'); 
         
         // Línea divisora
         $this->Ln(2);
@@ -66,10 +71,54 @@ class PDF extends FPDF {
     }
 }
 
+// conexion con la bd
+include_once("codigos/conexion2.inc"); // Incluye el archivo de conexión
+
 // Nueva instancia del PDF
 $pdf = new PDF();
-$pdf->AliasNbPages();
+$pdf->AliasNbPages();// es como un contador para contar el maximo de pagina que se van generando
 
-// Genera el PDF con solo el encabezado
+// Parámetros de consulta 
+$customerID = 'ALFKI';       // ID de clientes:  ALFKI,HILAA,FURIB,LAMAI,BLAUS,IFKA 
+$startDate = '1995-05-01'; 
+$endDate = '1995-06-30'; 
+
+// Consulta SQL para obtener los datos del cliente
+$sql = "SELECT 
+            c.CompanyName, 
+            c.ContactName, 
+            c.ContactTitle, 
+            c.City, 
+            c.Country, 
+            c.PostalCode 
+        FROM 
+            customers c 
+        WHERE 
+            c.CustomerID = '$customerID'" ;
+
+$result = mysqli_query($conex, $sql);
+
+if ($row = mysqli_fetch_assoc($result)) {
+
+    // Asigna los datoos con las variables de la clase PDF
+    $pdf->companyName = $row['CompanyName'];
+    $pdf->contactName = $row['ContactName'];
+    $pdf->contactTitle = $row['ContactTitle'];
+    $pdf->city = $row['City'];
+    $pdf->country = $row['Country'];
+    $pdf->postalCode = $row['PostalCode'];
+    $pdf->startDate = $startDate;
+    $pdf->endDate = $endDate;
+
+    $pdf->AddPage(); // Agrega una página
+} else {
+    die('No se encontró el cliente con el ID especificado.');
+}
+
 $pdf->Output();
+
+if(isset($regis)){
+    mysqli_free_result($regis);
+}
+mysqli_close($conex);
 ?>
